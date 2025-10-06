@@ -1,0 +1,147 @@
+{
+  "stat_lines": [
+    {
+      "date": "2023-12-13",
+      "opponent": "Indiana Pacers",
+      "score": "W 140-126",
+      "stats": {
+        "points": 64,
+        "rebounds": 14,
+        "assists": 3,
+        "steals": 4,
+        "blocks": 1
+      },
+      "fun_fact": "A new franchise-record for points, but it's also known for the infamous 'Game Ball Incident' after the game.",
+      "youtube_link": "https://www.youtube.com/watch?v=US9oMcx7Sno"
+    },
+    {
+      "date": "2021-07-20",
+      "opponent": "Phoenix Suns",
+      "score": "W 105-98",
+      "stats": {
+        "points": 50,
+        "rebounds": 14,
+        "assists": 2,
+        "blocks": 5
+      },
+      "fun_fact": "The historic Finals-clinching performance. Giannis became just the seventh player in NBA history to score 50 points in a Finals game.",
+      "youtube_link": "https://www.youtube.com/watch?v=qT450sE9k-I"
+    },
+    {
+      "date": "2022-12-28",
+      "opponent": "Chicago Bulls",
+      "score": "L 113-119",
+      "stats": {
+        "points": 45,
+        "rebounds": 22,
+        "assists": 7,
+        "steals": 1,
+        "blocks": 0
+      },
+      "fun_fact": "A monstrous stat line that highlights his all-around dominance, despite a rare loss for the team.",
+      "youtube_link": "https://www.youtube.com/watch?v=F_fW7B0x7nE"
+    },
+    {
+      "date": "2023-01-03",
+      "opponent": "Washington Wizards",
+      "score": "W 123-113",
+      "stats": {
+        "points": 55,
+        "rebounds": 10,
+        "assists": 7,
+        "steals": 2
+      },
+      "fun_fact": "A career-high scoring night that solidified his place as a scoring threat, going 20-33 from the field.",
+      "youtube_link": "https://www.youtube.com/watch?v=9sefbEFsY-Q"
+    },
+    {
+      "date": "2020-03-01",
+      "opponent": "Charlotte Hornets",
+      "score": "W 93-85",
+      "stats": {
+        "points": 41,
+        "rebounds": 20,
+        "assists": 6,
+        "steals": 1
+      },
+      "fun_fact": "A dominant pre-pandemic performance that showcased his ability to put up massive points and rebounds.",
+      "youtube_link": "https://www.youtube.com/watch?v=680X6V1Pz6Y"
+    }
+  ],
+  "dunks_by_type": [
+    {
+      "type": "Euro-Step Poster",
+      "description": "Giannis's signature move. A massive, elongated euro-step followed by a ferocious dunk over a defender. Shows his unique blend of guard skills and power.",
+      "youtube_link": "https://www.youtube.com/watch?v=N76c0pjqwxI"
+    },
+    {
+      "type": "The 'Finals Block' Dunk",
+      "description": "The symbolic follow-up to his iconic block on Deandre Ayton. This dunk cemented the defensive play as a crucial turning point in the NBA Finals.",
+      "youtube_link": "https://www.youtube.com/watch?v=qT450sE9k-I"
+    },
+    {
+      "type": "Power Dunk",
+      "description": "The classic, no-nonsense dunk. Giannis bowls through a defender in the paint for a powerful two-handed slam, often forcing an 'and-one'.",
+      "youtube_link": "https://www.youtube.com/watch?v=WKpO24T3S1Y"
+    },
+    {
+      "type": "Transition/Coast-to-Coast",
+      "description": "The incredible fast-break dunks where Giannis grabs a rebound and takes only a few dribbles to get from one end of the court to the other for a monster jam.",
+      "youtube_link": "https://www.youtube.com/watch?v=0USzJs9agOk"
+    }
+  ],
+  "championship_quotes": [
+    {
+      "quote": "I'm a human being. Two years ago, I had the goal in my head that I was gonna be the best player in the league. I'm gonna do whatever it takes to help my team win, and I'm gonna win MVP. But it's not always a straight line. The good thing about sports is that you don't fail. Some days you are able to be successful, some days you're not. Some days it's your turn, some days it's not. And that's what sports is all about.",
+      "speaker": "Giannis Antetokounmpo",
+      "context": "His iconic post-game press conference after the Bucks were eliminated from the 2020 playoffs, showing his mindset before the championship run."
+    },
+    {
+      "quote": "We're not worried about what people are saying, what people are thinking. We're just trying to take it one game at a time. The job's not done.",
+      "speaker": "Giannis Antetokounmpo",
+      "context": "A constant mantra throughout the playoffs, showing the team's focus and humility."
+    },
+    {
+      "quote": "This is a great group of guys. I think that we all have that competitive spirit, and that's why we're here. We play for one another.",
+      "speaker": "Khris Middleton",
+      "context": "Highlighting the team chemistry and camaraderie after a big win."
+    },
+    {
+      "quote": "I've waited 11 years for this moment. And to do it in Milwaukee, it's a dream come true.",
+      "speaker": "Jrue Holiday",
+      "context": "Reflecting on his journey to a championship and the special meaning of winning it with the Bucks."
+    },
+    {
+      "quote": "I'm just so proud of these guys. They earned this. They fought for it every single day. This is for all of Milwaukee.",
+      "speaker": "Mike Budenholzer",
+      "context": "A coach's perspective on the team's dedication and the victory's meaning for the city."
+    }
+  ],
+  "funny_quotes": [
+    {
+      "quote": "I'm a human being. I cannot have everything. Cannot be handsome, beautiful kids, beautiful wife, great family, great teammates, great coaching staff, handsome, athletic. I cannot have everything in life. I cannot make three's too. God had to keep me humble. God said basically 'he cannot make three's. Can't shoot. Stay humble my guy.'",
+      "speaker": "Giannis Antetokounmpo",
+      "context": "After a game, joking about his lack of a consistent three-point shot, attributing it to God's plan to keep him humble."
+    },
+    {
+      "quote": "I want a trade!",
+      "speaker": "Giannis Antetokounmpo",
+      "context": "After being reminded that he had previously said he wouldn't leave Milwaukee before winning a championship, he jokingly threw this out in a press conference."
+    },
+    {
+      "quote": "The smoothie...man, God bless America!",
+      "speaker": "Giannis Antetokounmpo",
+      "context": "A classic early-career quote from his Twitter account, celebrating his first time trying a smoothie in the United States."
+    },
+    {
+      "quote": "I'm not a freak. I'm a good basketball player, but I'm not a freak.",
+      "speaker": "Giannis Antetokounmpo",
+      "context": "A moment from an early interview where he showed his modesty and discomfort with his famous nickname."
+    },
+    {
+      "quote": "I told him, 'Hey, Khris, we ******* did it.' He said, 'I know man, I know.' It was a moment that I'll never forget.",
+      "speaker": "Giannis Antetokounmpo",
+      "context": "Recalling a heartfelt, expletive-laden exchange with Khris Middleton after winning the 2021 NBA Finals. The casual F-bomb made it a fan favorite."
+    }
+  ]
+}
