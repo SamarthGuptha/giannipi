@@ -3,6 +3,7 @@ import random
 import os
 from flask import Flask, jsonify, request
 from functools import reduce
+from datetime import datetime
 DATA_FILE = "giannis_data.json"
 giannis_stats_data = {}
 
@@ -28,6 +29,23 @@ load_data()
 def filter_and_sort_stats(stat_lines, args):
     filtered_stats = stat_lines[:]
     filter_fields = {'points_min': 'points', 'rebounds_min': 'rebounds', 'assists_min': 'assists'}
+
+    #datestuff
+    date_start_str = args.get('date_start')
+    date_end_str = args.get('date_end')
+    DATE_FORMAT = "%Y-%m-%d"
+
+    try:
+        start_date = datetime.strptime(date_start_str, DATE_FORMAT) if date_start_str else datetime.min
+        end_date = datetime.strptime(date_end_str, DATE_FORMAT) if date_end_str else datetime.max
+
+        filtered_stats = [
+            line for line in filtered_stats
+            if start_date <= datetime.strptime(line['date'], DATE_FORMAT) <= end_date
+        ]
+    except ValueError:
+        return {"error": "Invalid date format. Use YYYY-MM-DD."}, 400
+
     for arg_name, stat_key in filter_fields.items():
         min_value_str = args.get(arg_name)
         if min_value_str:
@@ -76,6 +94,48 @@ def get_stat_lines():
 
     return jsonify({"message": "No stat lines found matching the criteria."}), 200
 
+@app.route('/search/quotes', methods=['GET'])
+def search_quotes():
+    query = request.args.get('query')
+    if not query:
+        return jsonify({"error": "No query provided"}), 400
+
+    search_term = query.lower()
+    all_quotes = []
+
+    championship = [dict(q, source="Championship") for q in giannis_stats_data.get('championship_quotes', [])]
+    funny = [dict(q, source="Funny") for q in giannis_stats_data.get('funny_quotes', [])]
+
+    all_quotes.extend(championship)
+    all_quotes.extend(funny)
+
+    results = []
+    for item in all_quotes:
+        quote_text = item.get('quote', '').lower()
+        context_text = item.get('context', '').lower()
+
+        if search_term in quote_text or search_term in context_text:
+            results.append(item)
+
+    return jsonify({
+        "query": query,
+        "count": len(results),
+        "results": results
+    })
+
+@app.route('/giannis/dunks/count', methods=['GET'])
+def get_dunk_count():
+    dunks_data = giannis_stats_data.get('dunks_by_type', [])
+    count = len(dunks_data)
+
+    if count==0: return jsonify({"message": "No dunk types defined in dataset."}), 200
+
+    return jsonify({
+        "total_dunk_types": count,
+        "summary": "This API tracks four distinct signature dunk types by Giannis Antetokounmpo.",
+        "types_avilable": [d['type'] for d in dunks_data]
+    }
+    )
 @app.route('/giannis/career-averages', methods=['GET'])
 def get_career_averages():
     stat_lines = giannis_stats_data.get('stat_lines', [])
