@@ -4,12 +4,9 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="ffaa81e8-b84b-419a-8a3c-9b2e3d6d9be5" name="Changes" comment="added json file">
-      <change afterPath="$PROJECT_DIR$/app.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/requirements.txt" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/vercel.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/giannipi.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/giannipi.iml" afterDir="false" />
+    <list default="true" id="ffaa81e8-b84b-419a-8a3c-9b2e3d6d9be5" name="Changes" comment="feat: the actual api lmao">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app.py" beforeDir="false" afterPath="$PROJECT_DIR$/app.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -100,7 +97,7 @@
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
       <updated>1759715546469</updated>
-      <workItem from="1759715547382" duration="5808000" />
+      <workItem from="1759715547382" duration="11369000" />
     </task>
     <task id="LOCAL-00001" summary="added json file">
       <option name="closed" value="true" />
@@ -110,7 +107,15 @@
       <option name="project" value="LOCAL" />
       <updated>1759716805347</updated>
     </task>
-    <option name="localTasksCounter" value="2" />
+    <task id="LOCAL-00002" summary="feat: the actual api lmao">
+      <option name="closed" value="true" />
+      <created>1759729612401</created>
+      <option name="number" value="00002" />
+      <option name="presentableId" value="LOCAL-00002" />
+      <option name="project" value="LOCAL" />
+      <updated>1759729612401</updated>
+    </task>
+    <option name="localTasksCounter" value="3" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -118,9 +123,10 @@
   </component>
   <component name="VcsManagerConfiguration">
     <MESSAGE value="added json file" />
-    <option name="LAST_COMMIT_MESSAGE" value="added json file" />
+    <MESSAGE value="feat: the actual api lmao" />
+    <option name="LAST_COMMIT_MESSAGE" value="feat: the actual api lmao" />
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
-    <SUITE FILE_PATH="coverage/giannipi$Flask__app_py_.coverage" NAME="Flask (app.py) Coverage Results" MODIFIED="1759729104932" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="" />
+    <SUITE FILE_PATH="coverage/giannipi$Flask__app_py_.coverage" NAME="Flask (app.py) Coverage Results" MODIFIED="1759737241666" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="" />
   </component>
 </project>
