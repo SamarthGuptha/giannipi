@@ -107,7 +107,7 @@
       <updated>1759715546469</updated>
       <workItem from="1759715547382" duration="21550000" />
       <workItem from="1760017571236" duration="3019000" />
-      <workItem from="1760098207838" duration="3148000" />
+      <workItem from="1760098207838" duration="3661000" />
     </task>
     <task id="LOCAL-00001" summary="added json file">
       <option name="closed" value="true" />
@@ -146,6 +146,17 @@
   </component>
   <component name="TypeScriptGeneratedFilesManager">
     <option name="version" value="3" />
+  </component>
+  <component name="Vcs.Log.Tabs.Properties">
+    <option name="TAB_STATES">
+      <map>
+        <entry key="MAIN">
+          <value>
+            <State />
+          </value>
+        </entry>
+      </map>
+    </option>
   </component>
   <component name="VcsManagerConfiguration">
     <MESSAGE value="added json file" />
