@@ -4,8 +4,8 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="ffaa81e8-b84b-419a-8a3c-9b2e3d6d9be5" name="Changes" comment="feat: targeted search, double doubles, triple doubles, opponent search also redid the code a lil bit!!!">
-      <change afterPath="$PROJECT_DIR$/src/comparison_service.py" afterDir="false" />
+    <list default="true" id="ffaa81e8-b84b-419a-8a3c-9b2e3d6d9be5" name="Changes" comment="feat: fact aggregation, game comparison, also improved readability(by very little tho)">
+      <change afterPath="$PROJECT_DIR$/src/analysis_service.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/app.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/app.py" afterDir="false" />
     </list>
@@ -135,7 +135,8 @@
       <workItem from="1760017571236" duration="3019000" />
       <workItem from="1760098207838" duration="6154000" />
       <workItem from="1760149378470" duration="3286000" />
-      <workItem from="1760236692847" duration="1130000" />
+      <workItem from="1760236692847" duration="4170000" />
+      <workItem from="1760283715616" duration="1090000" />
     </task>
     <task id="LOCAL-00001" summary="added json file">
       <option name="closed" value="true" />
@@ -177,7 +178,15 @@
       <option name="project" value="LOCAL" />
       <updated>1760102201099</updated>
     </task>
-    <option name="localTasksCounter" value="6" />
+    <task id="LOCAL-00006" summary="feat: fact aggregation, game comparison, also improved readability(by very little tho)">
+      <option name="closed" value="true" />
+      <created>1760238022682</created>
+      <option name="number" value="00006" />
+      <option name="presentableId" value="LOCAL-00006" />
+      <option name="project" value="LOCAL" />
+      <updated>1760238022682</updated>
+    </task>
+    <option name="localTasksCounter" value="7" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -200,10 +209,11 @@
     <MESSAGE value="made it lil useful" />
     <MESSAGE value="feat: search quotes, dunk counts etc etc..." />
     <MESSAGE value="feat: targeted search, double doubles, triple doubles, opponent search also redid the code a lil bit!!!" />
-    <option name="LAST_COMMIT_MESSAGE" value="feat: targeted search, double doubles, triple doubles, opponent search also redid the code a lil bit!!!" />
+    <MESSAGE value="feat: fact aggregation, game comparison, also improved readability(by very little tho)" />
+    <option name="LAST_COMMIT_MESSAGE" value="feat: fact aggregation, game comparison, also improved readability(by very little tho)" />
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
-    <SUITE FILE_PATH="coverage/giannipi$Flask__src_app_py_.coverage" NAME="Flask (src/app.py) Coverage Results" MODIFIED="1760237251971" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/giannipi$Flask__src_app_py_.coverage" NAME="Flask (src/app.py) Coverage Results" MODIFIED="1760284445806" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/giannipi$comparison_service.coverage" NAME="comparison_service Coverage Results" MODIFIED="1760150042369" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src" />
     <SUITE FILE_PATH="coverage/giannipi$Flask__app_py_.coverage" NAME="Flask (app.py) Coverage Results" MODIFIED="1759748553961" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="" />
   </component>

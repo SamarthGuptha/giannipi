@@ -4,7 +4,7 @@ from flask import Flask, jsonify, request
 from datetime import datetime
 
 from comparison_service import calculate_similarity, get_career_highs, STAT_CATEGORIES
-
+from analysis_service import analyze_quotes
 app = Flask(__name__)
 DATA_FILE = 'giannis_data.json'
 try:
@@ -122,10 +122,20 @@ def home():
             "/giannis/dunks/count",
             "/bucks/championship-quotes",
             "/giannis/funny-quotes",
+            "/analytics/quote-source-distribution"
         ]
     })
+@app.route('/analytics/quote-source-distribution')
+def get_quote_distribution_analysis():
+    error_response = check_data_ready('championship_quotes')
+    if error_response: #checking against funny quotes as fallback if champ quotes is empty
+        error_response = check_data_ready('funny_quotes')
+        if error_response:
+            return error_response
 
+    analysis_results = analyze_quotes(data)
 
+    return jsonify(analysis_results)
 @app.route('/giannis/stat-lines')
 def get_stat_lines():
     error_response = check_data_ready('stat_lines')
