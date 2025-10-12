@@ -3,8 +3,9 @@ import random
 from flask import Flask, jsonify, request
 from datetime import datetime
 
-app = Flask(__name__)
+from comparison_service import calculate_similarity, get_career_highs, STAT_CATEGORIES
 
+app = Flask(__name__)
 DATA_FILE = 'giannis_data.json'
 try:
     with open(DATA_FILE, 'r') as f:
@@ -19,11 +20,11 @@ except FileNotFoundError:
         "funny_quotes": []
     }
     DATA_LOADED = False
-STAT_CATEGORIES = ['points', 'rebounds', 'assists', 'steals', 'blocks']
 
 def check_data_ready(key=None):
     if not DATA_LOADED:
-        return jsonify({"error": f"Critical Error: Data file '{DATA_FILE}' could not be loaded. Ensure the file exists next to app.py."}), 500
+        return jsonify({
+                           "error": f"Critical Error: Data file '{DATA_FILE}' could not be loaded. Ensure the file exists next to app.py."}), 500
 
     if key and not data.get(key):
         return jsonify({"error": f"Data source '{key}' is empty or missing in {DATA_FILE}."}), 404
@@ -66,7 +67,6 @@ def filter_stat_lines(stat_lines, args):
 
 
 def sort_stat_lines(stat_lines, args):
-
     sort_by = args.get('sort_by')
     order = args.get('order', 'desc').lower()
 
@@ -105,15 +105,18 @@ def is_triple_double(stats):
             triple_count += 1
 
     return triple_count >= 3
+
 @app.route('/')
 def home():
     return jsonify({
-        "message": "Welcome to the giannipi!",
+        "message": "Welcome to giannipi!",
         "endpoints": [
             "/giannis/stat-lines",
             "/giannis/career-averages",
             "/giannis/stats-by-opponent?opponent=...",
             "/giannis/doubles?type=dd",
+            "/giannis/fun-facts?tag=...",
+            "/giannis/compare-games?date=YYYY-MM-DD&limit=N",
             "/search/quotes?query=...&source=...",
             "/giannis/dunks-by-type",
             "/giannis/dunks/count",
@@ -131,7 +134,6 @@ def get_stat_lines():
 
     if not request.args:
         return jsonify(random.choice(data['stat_lines']))
-
     filtered = filter_stat_lines(data['stat_lines'], request.args)
 
     if not filtered:
@@ -156,15 +158,13 @@ def get_career_averages():
     total_games = len(data['stat_lines'])
 
     totals = {stat: 0 for stat in STAT_CATEGORIES}
-    career_highs = {stat: 0 for stat in STAT_CATEGORIES}
+    career_highs = get_career_highs(data['stat_lines'])
 
     for line in data['stat_lines']:
         stats = line.get('stats', {})
         for stat in STAT_CATEGORIES:
             value = stats.get(stat, 0)
             totals[stat] += value
-            if value > career_highs[stat]:
-                career_highs[stat] = value
 
     averages = {stat: round(totals[stat] / total_games, 2) for stat in STAT_CATEGORIES}
 
@@ -188,7 +188,6 @@ def get_stats_by_opponent():
         return jsonify({"error": "Missing required query parameter: opponent."}), 400
 
     opponent_lower = opponent_name.lower()
-
     matched_stat_lines = [
         line for line in data['stat_lines']
         if opponent_lower in line.get('opponent', '').lower()
@@ -225,7 +224,6 @@ def get_doubles():
         if is_td_query and is_triple_double(stats):
             filtered_games.append(line)
         elif not is_td_query and is_double_double(stats):
-
             if not is_triple_double(stats) or is_td_query:
                 filtered_games.append(line)
 
@@ -236,6 +234,98 @@ def get_doubles():
         "double_type": "Triple-Double" if is_td_query else "Double-Double",
         "matched_games": filtered_games,
         "count": len(filtered_games)
+    })
+
+
+@app.route('/giannis/fun-facts')
+def get_fun_facts():
+    error_response = check_data_ready('stat_lines')
+    if error_response:
+        return error_response
+
+    search_tag = request.args.get('tag', '').lower()
+
+    fun_facts_list = []
+
+    for line in data['stat_lines']:
+        fact = line.get('fun_fact')
+
+        if fact and search_tag in fact.lower():
+            fun_facts_list.append({
+                "date": line.get('date'),
+                "opponent": line.get('opponent'),
+                "score": line.get('score'),
+                "fun_fact": fact,
+                "youtube_link": line.get('youtube_link')
+            })
+
+    if not fun_facts_list and search_tag:
+        return jsonify({"message": f"No fun facts found matching the tag: '{search_tag}'."}), 404
+
+    return jsonify({
+        "search_tag": search_tag if search_tag else "none",
+        "results": fun_facts_list,
+        "count": len(fun_facts_list)
+    })
+
+
+@app.route('/giannis/compare-games')
+def compare_games():
+    error_response = check_data_ready('stat_lines')
+    if error_response:
+        return error_response
+
+    target_date = request.args.get('date')
+    limit = request.args.get('limit', type=int, default=5)
+
+    if not target_date:
+        return jsonify({"error": "Missing required query parameter: date (YYYY-MM-DD)."}), 400
+
+    try:
+        target_game = next(
+            (line for line in data['stat_lines'] if line['date'] == target_date),
+            None
+        )
+    except Exception:
+        return jsonify({"error": "Data structure error when searching for target date."}), 500
+
+    if not target_game:
+        return jsonify({"error": f"Game not found for date: {target_date}."}), 404
+
+    career_highs = get_career_highs(data['stat_lines'])
+    target_stats = target_game['stats']
+
+    comparisons = []
+
+    for game in data['stat_lines']:
+        if game['date'] == target_date:
+            continue  #skip comparison to target game
+
+        similarity_score = calculate_similarity(
+            target_stats,
+            game['stats'],
+            career_highs
+        )
+
+        result = {
+            "date": game['date'],
+            "opponent": game['opponent'],
+            "score": game['score'],
+            "stats": game['stats'],
+            "similarity_distance": round(similarity_score, 4)
+        }
+        comparisons.append(result)
+
+    comparisons.sort(key=lambda x: x['similarity_distance'])
+
+    return jsonify({
+        "target_game": {
+            "date": target_game['date'],
+            "opponent": target_game['opponent'],
+            "stats": target_stats
+        },
+        "most_similar_games": comparisons[:limit],
+        "comparison_method": "Euclidean Distance (normalized by career highs)"
     })
 
 
@@ -257,6 +347,8 @@ def get_dunk_count():
     return jsonify({
         "dunk_type_count": len(data['dunks_by_type'])
     })
+
+
 @app.route('/bucks/championship-quotes')
 def get_championship_quotes():
     error_response = check_data_ready('championship_quotes')
@@ -264,6 +356,7 @@ def get_championship_quotes():
         return error_response
 
     return jsonify(data['championship_quotes'])
+
 
 @app.route('/giannis/funny-quotes')
 def get_funny_quotes():
@@ -273,9 +366,10 @@ def get_funny_quotes():
 
     return jsonify(data['funny_quotes'])
 
+
 @app.route('/search/quotes')
 def search_quotes():
-    error_response = check_data_ready('funny_quotes')
+    error_response = check_data_ready('funny_quotes')  # Checking against one of the list keys
     if error_response:
         return error_response
 
@@ -284,8 +378,10 @@ def search_quotes():
 
     if not query:
         return jsonify({"error": "Missing required query parameter: query."}), 400
+
     query_lower = query.lower()
     all_quotes = []
+
     if source_filter == 'funny':
         quotes_to_search = data.get('funny_quotes', [])
         source_name = "funny"
@@ -299,6 +395,7 @@ def search_quotes():
     for quote in quotes_to_search:
         if query_lower in quote.get('quote', '').lower() or \
                 query_lower in quote.get('context', '').lower():
+
             quote_with_source = quote.copy()
             if quote in data.get('championship_quotes', []):
                 quote_with_source['source'] = 'Championship'
