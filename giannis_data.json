@@ -25,7 +25,7 @@
         "blocks": 5
       },
       "fun_fact": "The historic Finals-clinching performance. Giannis became just the seventh player in NBA history to score 50 points in a Finals game.",
-      "youtube_link": "https://www.youtube.com/watch?v=wHPLeWsAQw4"
+      "youtube_link": "https://www.youtube.com/watch?v=qT450sE9k-I"
     },
     {
       "date": "2022-12-28",
@@ -52,7 +52,7 @@
         "steals": 2
       },
       "fun_fact": "A career-high scoring night that solidified his place as a scoring threat, going 20-33 from the field.",
-      "youtube_link": "https://www.youtube.com/watch?v=9sefbEFsY-Q"
+      "youtube_link": "https://www.youtube.com/watch?v=L2GjH0b_G8A"
     },
     {
       "date": "2020-03-01",
@@ -66,6 +66,104 @@
       },
       "fun_fact": "A dominant pre-pandemic performance that showcased his ability to put up massive points and rebounds.",
       "youtube_link": "https://www.youtube.com/watch?v=680X6V1Pz6Y"
+    },
+    {
+      "date": "2025-04-03",
+      "opponent": "Philadelphia 76ers",
+      "score": "W 126-113",
+      "stats": {
+        "points": 35,
+        "rebounds": 17,
+        "assists": 20,
+        "steals": 2,
+        "blocks": 0
+      },
+      "fun_fact": "A historic, record-breaking night. This was the first time in NBA history a player recorded at least 35 points, 20 assists, and 15 rebounds in a single game.",
+      "youtube_link": "https://www.youtube.com/watch?v=OQMg4Ma55ls"
+    },
+    {
+      "date": "2023-11-09",
+      "opponent": "Indiana Pacers",
+      "score": "W 128-118",
+      "stats": {
+        "points": 54,
+        "rebounds": 12,
+        "assists": 3,
+        "steals": 0,
+        "blocks": 0
+      },
+      "fun_fact": "A huge scoring night that showcased his incredible efficiency from the field, going 19-25 with an incredible 76% field goal percentage.",
+      "youtube_link": "https://www.youtube.com/watch?v=f2vR8Q8wD8o"
+    },
+    {
+      "date": "2019-03-17",
+      "opponent": "Philadelphia 76ers",
+      "score": "W 123-108",
+      "stats": {
+        "points": 52,
+        "rebounds": 16,
+        "assists": 7,
+        "steals": 2,
+        "blocks": 1
+      },
+      "fun_fact": "An incredible duel against Joel Embiid that cemented his MVP case. He went to the free-throw line 21 times, making 19 of them.",
+      "youtube_link": "https://www.youtube.com/watch?v=r0f2xU2rT0k"
+    },
+    {
+      "date": "2021-05-02",
+      "opponent": "Brooklyn Nets",
+      "score": "W 117-114",
+      "stats": {
+        "points": 49,
+        "rebounds": 8,
+        "assists": 4,
+        "steals": 1,
+        "blocks": 3
+      },
+      "fun_fact": "An offensive masterclass against a star-studded Nets team, shooting an incredible 21-36 from the field.",
+      "youtube_link": "https://www.youtube.com/watch?v=b4N3t0D5Qz4"
+    },
+    {
+      "date": "2024-02-03",
+      "opponent": "Dallas Mavericks",
+      "score": "W 129-117",
+      "stats": {
+        "points": 48,
+        "rebounds": 6,
+        "assists": 10,
+        "steals": 5,
+        "blocks": 1
+      },
+      "fun_fact": "An all-around defensive and offensive clinic against Luka Dončić, with a season-high 5 steals.",
+      "youtube_link": "https://www.youtube.com/watch?v=7h7K3zB5m7w"
+    },
+    {
+      "date": "2021-11-17",
+      "opponent": "Los Angeles Lakers",
+      "score": "W 109-102",
+      "stats": {
+        "points": 47,
+        "rebounds": 9,
+        "assists": 3,
+        "steals": 1,
+        "blocks": 1
+      },
+      "fun_fact": "This dominant performance came on the night of the Bucks' ring ceremony, showing his focus and determination right from the start of the season.",
+      "youtube_link": "https://www.youtube.com/watch?v=Q-d6qRjUeLg"
+    },
+    {
+      "date": "2023-02-02",
+      "opponent": "Los Angeles Clippers",
+      "score": "W 106-105",
+      "stats": {
+        "points": 54,
+        "rebounds": 19,
+        "assists": 2,
+        "steals": 0,
+        "blocks": 0
+      },
+      "fun_fact": "A monstrous scoring and rebounding night against a talented Clippers team, showing his physicality and interior dominance.",
+      "youtube_link": "https://www.youtube.com/watch?v=uK1l0XlFh-c"
     }
   ],
   "dunks_by_type": [
