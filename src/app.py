@@ -2,13 +2,15 @@ import json
 import random
 from flask import Flask, jsonify, request
 from datetime import datetime
-
 from comparison_service import calculate_similarity, get_career_highs, STAT_CATEGORIES
 from analysis_service import analyze_quotes
+from impact_service import rank_games_by_impact
+
 app = Flask(__name__)
+
 DATA_FILE = 'giannis_data.json'
 try:
-    with open(DATA_FILE, 'r') as f:
+    with open(DATA_FILE, 'r', encoding="utf-8") as f:
         data = json.load(f)
     DATA_LOADED = True
 except FileNotFoundError:
@@ -20,7 +22,6 @@ except FileNotFoundError:
         "funny_quotes": []
     }
     DATA_LOADED = False
-
 def check_data_ready(key=None):
     if not DATA_LOADED:
         return jsonify({
@@ -67,8 +68,9 @@ def filter_stat_lines(stat_lines, args):
 
 
 def sort_stat_lines(stat_lines, args):
+
     sort_by = args.get('sort_by')
-    order = args.get('order', 'desc').lower()
+    order = args.get('order', 'desc').lower()  # Default to descending order
 
     if sort_by and sort_by in STAT_CATEGORIES + ['date']:
 
@@ -106,6 +108,7 @@ def is_triple_double(stats):
 
     return triple_count >= 3
 
+
 @app.route('/')
 def home():
     return jsonify({
@@ -117,25 +120,17 @@ def home():
             "/giannis/doubles?type=dd",
             "/giannis/fun-facts?tag=...",
             "/giannis/compare-games?date=YYYY-MM-DD&limit=N",
+            "/analytics/quote-source-distribution",
+            "/giannis/impact-ranking?weights=P,R,A,S,B",
             "/search/quotes?query=...&source=...",
             "/giannis/dunks-by-type",
             "/giannis/dunks/count",
             "/bucks/championship-quotes",
             "/giannis/funny-quotes",
-            "/analytics/quote-source-distribution"
         ]
     })
-@app.route('/analytics/quote-source-distribution')
-def get_quote_distribution_analysis():
-    error_response = check_data_ready('championship_quotes')
-    if error_response: #checking against funny quotes as fallback if champ quotes is empty
-        error_response = check_data_ready('funny_quotes')
-        if error_response:
-            return error_response
 
-    analysis_results = analyze_quotes(data)
 
-    return jsonify(analysis_results)
 @app.route('/giannis/stat-lines')
 def get_stat_lines():
     error_response = check_data_ready('stat_lines')
@@ -144,6 +139,7 @@ def get_stat_lines():
 
     if not request.args:
         return jsonify(random.choice(data['stat_lines']))
+
     filtered = filter_stat_lines(data['stat_lines'], request.args)
 
     if not filtered:
@@ -198,6 +194,7 @@ def get_stats_by_opponent():
         return jsonify({"error": "Missing required query parameter: opponent."}), 400
 
     opponent_lower = opponent_name.lower()
+
     matched_stat_lines = [
         line for line in data['stat_lines']
         if opponent_lower in line.get('opponent', '').lower()
@@ -279,6 +276,51 @@ def get_fun_facts():
     })
 
 
+@app.route('/giannis/impact-ranking')
+def get_impact_ranking():
+    error_response = check_data_ready('stat_lines')
+    if error_response:
+        return error_response
+
+    weights_str = request.args.get('weights')
+    limit = request.args.get('limit', type=int, default=5)
+
+    if not weights_str:
+        return jsonify({
+            "error": "Missing required query parameter: weights.",
+            "format": "Weights must be provided as a comma-separated string for P, R, A, S, B (e.g., ?weights=2,3,1,5,4)."
+        }), 400
+
+    ranked_games, error = rank_games_by_impact(data['stat_lines'], weights_str)
+
+    if error:
+        return jsonify({"error": f"Invalid weights format: {error}"}), 400
+
+    if not ranked_games:
+        return jsonify({"message": "No games to rank."}), 404
+
+    weights_dict, _ = rank_games_by_impact([], weights_str)
+
+    return jsonify({
+        "impact_weights": weights_dict,
+        "ranking_criteria": "Points, Rebounds, Assists, Steals, Blocks",
+        "top_ranked_games": ranked_games[:limit]
+    })
+
+
+@app.route('/analytics/quote-source-distribution')
+def get_quote_distribution_analysis():
+    error_response = check_data_ready('championship_quotes')
+    if error_response:
+        error_response = check_data_ready('funny_quotes')
+        if error_response:
+            return error_response
+
+    analysis_results = analyze_quotes(data)
+
+    return jsonify(analysis_results)
+
+
 @app.route('/giannis/compare-games')
 def compare_games():
     error_response = check_data_ready('stat_lines')
@@ -309,8 +351,7 @@ def compare_games():
 
     for game in data['stat_lines']:
         if game['date'] == target_date:
-            continue  #skip comparison to target game
-
+            continue
         similarity_score = calculate_similarity(
             target_stats,
             game['stats'],
@@ -325,7 +366,6 @@ def compare_games():
             "similarity_distance": round(similarity_score, 4)
         }
         comparisons.append(result)
-
     comparisons.sort(key=lambda x: x['similarity_distance'])
 
     return jsonify({
@@ -370,6 +410,7 @@ def get_championship_quotes():
 
 @app.route('/giannis/funny-quotes')
 def get_funny_quotes():
+    """Returns the entire funny_quotes array."""
     error_response = check_data_ready('funny_quotes')
     if error_response:
         return error_response
