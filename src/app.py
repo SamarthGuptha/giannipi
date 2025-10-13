@@ -5,6 +5,7 @@ from datetime import datetime
 from comparison_service import calculate_similarity, get_career_highs, STAT_CATEGORIES
 from analysis_service import analyze_quotes
 from impact_service import rank_games_by_impact
+from speaker_service import analyze_speakers
 
 app = Flask(__name__)
 
@@ -121,8 +122,9 @@ def home():
             "/giannis/fun-facts?tag=...",
             "/giannis/compare-games?date=YYYY-MM-DD&limit=N",
             "/analytics/quote-source-distribution",
+            "/analytics/speaker-analysis",
             "/giannis/impact-ranking?weights=P,R,A,S,B",
-            "/search/quotes?query=...&source=...",
+            "/search/quotes?query=...&source=...&speaker...",
             "/giannis/dunks-by-type",
             "/giannis/dunks/count",
             "/bucks/championship-quotes",
@@ -294,13 +296,20 @@ def get_impact_ranking():
     ranked_games, error = rank_games_by_impact(data['stat_lines'], weights_str)
 
     if error:
-        return jsonify({"error": f"Invalid weights format: {error}"}), 400
-
+        return jsonify({"error": f"invalid weight format: {error}"}), 400
     if not ranked_games:
-        return jsonify({"message": "No games to rank."}), 404
+        return jsonify({"message": "No games to rank"}), 404
 
-    weights_dict, _ = rank_games_by_impact([], weights_str)
+    weights_dict = {
+        'P': 0, 'R': 0, 'A': 0, 'S': 0, 'B': 0
+    }
 
+    try:
+        raw_weights = [int(w.strip()) for w in weights_str.split(',')]
+        if len(raw_weights) == 5:
+            weights_dict = dict(zip(['P', 'R', 'A', 'S', 'B'], raw_weights))
+    except Exception:
+        pass
     return jsonify({
         "impact_weights": weights_dict,
         "ranking_criteria": "Points, Rebounds, Assists, Steals, Blocks",
@@ -316,10 +325,21 @@ def get_quote_distribution_analysis():
         if error_response:
             return error_response
 
-    analysis_results = analyze_quotes(data)
+    analysis_results = analyze_speakers(data)
 
     return jsonify(analysis_results)
 
+
+@app.route('/analytics/speaker-analysis')
+def get_speaker_analysis():
+    error_response = check_data_ready('championship_quotes')
+    if error_response:
+        error_response = check_data_ready('funny_quotes')
+        if error_response: return error_response
+
+    analysis_results = analyze_quotes(data)
+
+    return jsonify(analysis_results)
 
 @app.route('/giannis/compare-games')
 def compare_games():
@@ -410,7 +430,6 @@ def get_championship_quotes():
 
 @app.route('/giannis/funny-quotes')
 def get_funny_quotes():
-    """Returns the entire funny_quotes array."""
     error_response = check_data_ready('funny_quotes')
     if error_response:
         return error_response
@@ -422,31 +441,45 @@ def get_funny_quotes():
 def search_quotes():
     error_response = check_data_ready('funny_quotes')  # Checking against one of the list keys
     if error_response:
-        return error_response
+        error_response = check_data_ready('championship_quotes')
+        if error_response:
+            return error_response
 
     query = request.args.get('query')
     source_filter = request.args.get('source', '').lower()
+    speaker_filter = request.args.get('speaker', '').lower()
 
-    if not query:
+
+    if not query and not speaker_filter:
         return jsonify({"error": "Missing required query parameter: query."}), 400
 
-    query_lower = query.lower()
-    all_quotes = []
+    query_lower = query.lower() if query else ''
+    quotes_to_search = []
+    source_name = "all"
 
     if source_filter == 'funny':
         quotes_to_search = data.get('funny_quotes', [])
         source_name = "funny"
-    elif source_filter == 'championship':
+    elif source_filter == 'champion':
         quotes_to_search = data.get('championship_quotes', [])
         source_name = "championship"
     else:
         quotes_to_search = data.get('funny_quotes', []) + data.get('championship_quotes', [])
-        source_name = "all"
+
+
+    all_quotes = []
 
     for quote in quotes_to_search:
-        if query_lower in quote.get('quote', '').lower() or \
-                query_lower in quote.get('context', '').lower():
+        is_query_match = (
+            query_lower in quote.get('quote', '').lower() or
+            query_lower in quote.get('context', '').lower()
+        )
+        is_speaker_match = (
+            not speaker_filter or
+            speaker_filter in quote.get('speaker', '').lower()
+        )
 
+        if (not query or is_query_match) and is_speaker_match:
             quote_with_source = quote.copy()
             if quote in data.get('championship_quotes', []):
                 quote_with_source['source'] = 'Championship'
@@ -455,9 +488,13 @@ def search_quotes():
 
             all_quotes.append(quote_with_source)
 
+    if not all_quotes:
+        return jsonify({"message": "No quotes found matching the specified filters."}), 404
+
     return jsonify({
         "query": query,
         "source_searched": source_name,
+        "speaker_filtered": speaker_filter if speaker_filter else "none",
         "results": all_quotes,
         "count": len(all_quotes)
     })
