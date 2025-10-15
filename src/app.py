@@ -6,6 +6,7 @@ from comparison_service import calculate_similarity, get_career_highs, STAT_CATE
 from analysis_service import analyze_quotes
 from impact_service import rank_games_by_impact
 from speaker_service import analyze_speakers
+from probability_service import analyze_win_probability
 
 app = Flask(__name__)
 
@@ -129,6 +130,7 @@ def home():
             "/giannis/dunks/count",
             "/bucks/championship-quotes",
             "/giannis/funny-quotes",
+            "/giannis/win-probability?date=YYYY-MM-DD"
         ]
     })
 
@@ -329,7 +331,6 @@ def get_quote_distribution_analysis():
 
     return jsonify(analysis_results)
 
-
 @app.route('/analytics/speaker-analysis')
 def get_speaker_analysis():
     error_response = check_data_ready('championship_quotes')
@@ -436,6 +437,21 @@ def get_funny_quotes():
 
     return jsonify(data['funny_quotes'])
 
+
+@app.route('/giannis/win-probability')
+def get_win_probability():
+    error_response = check_data_ready('stat_lines')
+    if error_response: return error_response
+
+    target_date = request.args.get('date')
+    if not target_date: return jsonify({"error": "Missing required query parameter: date(YYYY-MM-DD)."}), 400
+
+    analysis_results, error = analyze_win_probability(data['stat_lines'], target_date)
+
+    if error:
+        return jsonify({"error": error}), 404 if "not found" in error else 400
+
+    return jsonify(analysis_results)
 
 @app.route('/search/quotes')
 def search_quotes():
