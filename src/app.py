@@ -7,6 +7,7 @@ from analysis_service import analyze_quotes
 from impact_service import rank_games_by_impact
 from speaker_service import analyze_speakers
 from probability_service import analyze_win_probability
+from dijkstra_service import find_shortest_path, MILESTONE_THRESHOLDS
 
 app = Flask(__name__)
 
@@ -130,10 +131,31 @@ def home():
             "/giannis/dunks/count",
             "/bucks/championship-quotes",
             "/giannis/funny-quotes",
-            "/giannis/win-probability?date=YYYY-MM-DD"
+            "/giannis/win-probability?date=YYYY-MM-DD",
+            "/giannis/shortest-path?start=...&end..."
         ]
     })
 
+@app.route('/giannis/shortest-path')
+def get_shortest_path():
+    error_response = check_data_ready('stat_lines')
+    if error_response: return error_response
+
+    start_node = request.args.get('start')
+    end_node = request.args.get('end')
+
+    if not start_node or not end_node:
+        return jsonify({
+            "error": "Missing required query parameters: start and end milestones.",
+            "available_milestones": list(MILESTONE_THRESHOLDS.keys())
+        }), 400
+
+    path_results, error = find_shortest_path(data['stat_lines'], start_node, end_node)
+
+    if error:
+        return jsonify({"error": error}), 400
+
+    return jsonify(path_results)
 
 @app.route('/giannis/stat-lines')
 def get_stat_lines():
@@ -455,7 +477,7 @@ def get_win_probability():
 
 @app.route('/search/quotes')
 def search_quotes():
-    error_response = check_data_ready('funny_quotes')  # Checking against one of the list keys
+    error_response = check_data_ready('funny_quotes')
     if error_response:
         error_response = check_data_ready('championship_quotes')
         if error_response:
