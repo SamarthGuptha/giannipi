@@ -2,18 +2,19 @@ import json
 import random
 from flask import Flask, jsonify, request
 from datetime import datetime
+
 from comparison_service import calculate_similarity, get_career_highs, STAT_CATEGORIES
 from analysis_service import analyze_quotes
 from impact_service import rank_games_by_impact
 from speaker_service import analyze_speakers
 from probability_service import analyze_win_probability
 from dijkstra_service import find_shortest_path, MILESTONE_THRESHOLDS
-
+from streak_service import analyze_game_streaks
 app = Flask(__name__)
 
 DATA_FILE = 'giannis_data.json'
 try:
-    with open(DATA_FILE, 'r', encoding="utf-8") as f:
+    with open(DATA_FILE, 'r', encoding='utf-8') as f:
         data = json.load(f)
     DATA_LOADED = True
 except FileNotFoundError:
@@ -25,6 +26,10 @@ except FileNotFoundError:
         "funny_quotes": []
     }
     DATA_LOADED = False
+
+STAT_CATEGORIES = ['points', 'rebounds', 'assists', 'steals', 'blocks']
+
+
 def check_data_ready(key=None):
     if not DATA_LOADED:
         return jsonify({
@@ -38,6 +43,7 @@ def check_data_ready(key=None):
 
 def filter_stat_lines(stat_lines, args):
     filtered_lines = []
+
     for line in stat_lines:
         keep = True
         for stat in STAT_CATEGORIES:
@@ -71,10 +77,8 @@ def filter_stat_lines(stat_lines, args):
 
 
 def sort_stat_lines(stat_lines, args):
-
     sort_by = args.get('sort_by')
-    order = args.get('order', 'desc').lower()  # Default to descending order
-
+    order = args.get('order', 'desc').lower()
     if sort_by and sort_by in STAT_CATEGORIES + ['date']:
 
         if sort_by == 'date':
@@ -97,7 +101,7 @@ def sort_stat_lines(stat_lines, args):
 def is_double_double(stats):
     double_count = 0
     for stat in STAT_CATEGORIES:
-        if stats.get(stat, 0) >= 10 and stat != 'blocks' and stat != 'steals':
+        if stats.get(stat, 0) >= 10:
             double_count += 1
 
     return double_count >= 2
@@ -111,7 +115,6 @@ def is_triple_double(stats):
 
     return triple_count >= 3
 
-
 @app.route('/')
 def home():
     return jsonify({
@@ -123,39 +126,20 @@ def home():
             "/giannis/doubles?type=dd",
             "/giannis/fun-facts?tag=...",
             "/giannis/compare-games?date=YYYY-MM-DD&limit=N",
+            "/giannis/impact-ranking?weights=P,R,A,S,B",
+            "/giannis/win-probability?date=YYYY-MM-DD",
+            "/giannis/shortest-path?start=...&end=...",
+            "/analytics/game-streaks?stat=...&min=...&length=...",
             "/analytics/quote-source-distribution",
             "/analytics/speaker-analysis",
-            "/giannis/impact-ranking?weights=P,R,A,S,B",
-            "/search/quotes?query=...&source=...&speaker...",
+            "/search/quotes?query=...&source=...&speaker=...",
             "/giannis/dunks-by-type",
             "/giannis/dunks/count",
             "/bucks/championship-quotes",
             "/giannis/funny-quotes",
-            "/giannis/win-probability?date=YYYY-MM-DD",
-            "/giannis/shortest-path?start=...&end..."
         ]
     })
 
-@app.route('/giannis/shortest-path')
-def get_shortest_path():
-    error_response = check_data_ready('stat_lines')
-    if error_response: return error_response
-
-    start_node = request.args.get('start')
-    end_node = request.args.get('end')
-
-    if not start_node or not end_node:
-        return jsonify({
-            "error": "Missing required query parameters: start and end milestones.",
-            "available_milestones": list(MILESTONE_THRESHOLDS.keys())
-        }), 400
-
-    path_results, error = find_shortest_path(data['stat_lines'], start_node, end_node)
-
-    if error:
-        return jsonify({"error": error}), 400
-
-    return jsonify(path_results)
 
 @app.route('/giannis/stat-lines')
 def get_stat_lines():
@@ -164,6 +148,8 @@ def get_stat_lines():
         return error_response
 
     if not request.args:
+        if not data['stat_lines']:
+            return jsonify({"message": "No stat lines found in data source."}), 404
         return jsonify(random.choice(data['stat_lines']))
 
     filtered = filter_stat_lines(data['stat_lines'], request.args)
@@ -238,6 +224,7 @@ def get_stats_by_opponent():
 
 @app.route('/giannis/doubles')
 def get_doubles():
+
     error_response = check_data_ready('stat_lines')
     if error_response:
         return error_response
@@ -320,24 +307,104 @@ def get_impact_ranking():
     ranked_games, error = rank_games_by_impact(data['stat_lines'], weights_str)
 
     if error:
-        return jsonify({"error": f"invalid weight format: {error}"}), 400
+        return jsonify({"error": f"Invalid weights format: {error}"}), 400
+
     if not ranked_games:
-        return jsonify({"message": "No games to rank"}), 404
+        return jsonify({"message": "No games to rank."}), 404
 
     weights_dict = {
         'P': 0, 'R': 0, 'A': 0, 'S': 0, 'B': 0
     }
-
     try:
         raw_weights = [int(w.strip()) for w in weights_str.split(',')]
         if len(raw_weights) == 5:
             weights_dict = dict(zip(['P', 'R', 'A', 'S', 'B'], raw_weights))
     except Exception:
         pass
+
     return jsonify({
         "impact_weights": weights_dict,
         "ranking_criteria": "Points, Rebounds, Assists, Steals, Blocks",
         "top_ranked_games": ranked_games[:limit]
+    })
+
+
+@app.route('/giannis/win-probability')
+def get_win_probability():
+    error_response = check_data_ready('stat_lines')
+    if error_response:
+        return error_response
+
+    target_date = request.args.get('date')
+
+    if not target_date:
+        return jsonify({"error": "Missing required query parameter: date (YYYY-MM-DD)."}), 400
+
+    analysis_results, error = analyze_win_probability(data['stat_lines'], target_date)
+
+    if error:
+        return jsonify({"error": error}), 404 if "not found" in error else 400
+
+    return jsonify(analysis_results)
+
+
+@app.route('/giannis/shortest-path')
+def get_shortest_path():
+    error_response = check_data_ready('stat_lines')
+    if error_response:
+        return error_response
+
+    start_node = request.args.get('start')
+    end_node = request.args.get('end')
+
+    if not start_node or not end_node:
+        return jsonify({
+            "error": "Missing required query parameters: start and end milestones.",
+            "available_milestones": list(MILESTONE_THRESHOLDS.keys())
+        }), 400
+
+    path_results, error = find_shortest_path(data['stat_lines'], start_node, end_node)
+
+    if error:
+        return jsonify({"error": error}), 400
+
+    return jsonify(path_results)
+
+
+@app.route('/analytics/game-streaks')
+def get_game_streaks():
+    error_response = check_data_ready('stat_lines')
+    if error_response:
+        return error_response
+
+    stat_key = request.args.get('stat')
+    min_value = request.args.get('min', type=int)
+    min_length = request.args.get('length', type=int)
+
+    if not stat_key or min_value is None or min_length is None:
+        return jsonify({
+            "error": "Missing required query parameters.",
+            "format": "Must provide 'stat' (e.g., points), 'min' (e.g., 30), and 'length' (e.g., 3)."
+        }), 400
+
+    streaks, error = analyze_game_streaks(
+        data['stat_lines'],
+        stat_key,
+        min_value,
+        min_length
+    )
+
+    if error:
+        return jsonify({"error": error}), 400
+
+    if not streaks:
+        return jsonify({
+                           "message": f"No streaks of {min_length} games or more found for {stat_key.capitalize()} >= {min_value}."}), 404
+
+    return jsonify({
+        "query": f"{min_length}+ games with {min_value}+ {stat_key.capitalize()}",
+        "total_streaks_found": len(streaks),
+        "streaks": streaks
     })
 
 
@@ -349,20 +416,23 @@ def get_quote_distribution_analysis():
         if error_response:
             return error_response
 
-    analysis_results = analyze_speakers(data)
+    analysis_results = analyze_quotes(data)
 
     return jsonify(analysis_results)
+
 
 @app.route('/analytics/speaker-analysis')
 def get_speaker_analysis():
     error_response = check_data_ready('championship_quotes')
     if error_response:
         error_response = check_data_ready('funny_quotes')
-        if error_response: return error_response
+        if error_response:
+            return error_response
 
-    analysis_results = analyze_quotes(data)
+    analysis_results = analyze_speakers(data)
 
     return jsonify(analysis_results)
+
 
 @app.route('/giannis/compare-games')
 def compare_games():
@@ -394,7 +464,8 @@ def compare_games():
 
     for game in data['stat_lines']:
         if game['date'] == target_date:
-            continue
+            continue #Skip comparing the game to itself
+
         similarity_score = calculate_similarity(
             target_stats,
             game['stats'],
@@ -460,21 +531,6 @@ def get_funny_quotes():
     return jsonify(data['funny_quotes'])
 
 
-@app.route('/giannis/win-probability')
-def get_win_probability():
-    error_response = check_data_ready('stat_lines')
-    if error_response: return error_response
-
-    target_date = request.args.get('date')
-    if not target_date: return jsonify({"error": "Missing required query parameter: date(YYYY-MM-DD)."}), 400
-
-    analysis_results, error = analyze_win_probability(data['stat_lines'], target_date)
-
-    if error:
-        return jsonify({"error": error}), 404 if "not found" in error else 400
-
-    return jsonify(analysis_results)
-
 @app.route('/search/quotes')
 def search_quotes():
     error_response = check_data_ready('funny_quotes')
@@ -486,35 +542,32 @@ def search_quotes():
     query = request.args.get('query')
     source_filter = request.args.get('source', '').lower()
     speaker_filter = request.args.get('speaker', '').lower()
-
-
     if not query and not speaker_filter:
-        return jsonify({"error": "Missing required query parameter: query."}), 400
+        return jsonify({"error": "Missing required query parameter: Must provide 'query' OR 'speaker' to search."}), 400
 
     query_lower = query.lower() if query else ''
-    quotes_to_search = []
+
     source_name = "all"
 
     if source_filter == 'funny':
         quotes_to_search = data.get('funny_quotes', [])
         source_name = "funny"
-    elif source_filter == 'champion':
+    elif source_filter == 'championship':
         quotes_to_search = data.get('championship_quotes', [])
         source_name = "championship"
     else:
         quotes_to_search = data.get('funny_quotes', []) + data.get('championship_quotes', [])
 
-
     all_quotes = []
 
     for quote in quotes_to_search:
         is_query_match = (
-            query_lower in quote.get('quote', '').lower() or
-            query_lower in quote.get('context', '').lower()
+                query_lower in quote.get('quote', '').lower() or
+                query_lower in quote.get('context', '').lower()
         )
         is_speaker_match = (
-            not speaker_filter or
-            speaker_filter in quote.get('speaker', '').lower()
+                not speaker_filter or
+                speaker_filter in quote.get('speaker', '').lower()
         )
 
         if (not query or is_query_match) and is_speaker_match:
