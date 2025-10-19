@@ -115,6 +115,37 @@ def is_triple_double(stats):
 
     return triple_count >= 3
 
+def execute_quote_search(quotes_to_search, query_lower, speaker_filter):
+    all_quotes = []
+
+    for quote_item in quotes_to_search:
+        quote_lower = quote_item.get('quote', '').lower()
+        context_lower = quote_item.get('context', '').lower()
+        speaker_lower = quote_item.get('speaker', '').lower()
+
+        is_speaker_match = (
+            not speaker_filter or
+            speaker_filter in speaker_lower
+        )
+
+        is_query_match = True
+        if query_lower:
+            is_query_match = (
+                query_lower in quote_lower or
+                query_lower in context_lower
+            )
+
+        if is_speaker_match and (not query_lower or is_query_match):
+            quote_with_source = quote_item.copy()
+            if quote_item in data.get('championship_quotes', []):
+                quote_with_source['source'] = 'Championship'
+            else: quote_with_source['source'] = 'Funny'
+
+            all_quotes.append(quote_with_source)
+    return all_quotes
+
+
+
 @app.route('/')
 def home():
     return jsonify({
@@ -132,6 +163,7 @@ def home():
             "/analytics/game-streaks?stat=...&min=...&length=...",
             "/analytics/quote-source-distribution",
             "/analytics/speaker-analysis",
+            "/analytics/time-gaps",
             "/search/quotes?query=...&source=...&speaker=...",
             "/giannis/dunks-by-type",
             "/giannis/dunks/count",
@@ -255,7 +287,6 @@ def get_doubles():
         "matched_games": filtered_games,
         "count": len(filtered_games)
     })
-
 
 @app.route('/giannis/fun-facts')
 def get_fun_facts():
@@ -558,29 +589,9 @@ def search_quotes():
     else:
         quotes_to_search = data.get('funny_quotes', []) + data.get('championship_quotes', [])
 
-    all_quotes = []
+    all_quotes = execute_quote_search(quotes_to_search, query_lower, speaker_filter)
 
-    for quote in quotes_to_search:
-        is_query_match = (
-                query_lower in quote.get('quote', '').lower() or
-                query_lower in quote.get('context', '').lower()
-        )
-        is_speaker_match = (
-                not speaker_filter or
-                speaker_filter in quote.get('speaker', '').lower()
-        )
-
-        if (not query or is_query_match) and is_speaker_match:
-            quote_with_source = quote.copy()
-            if quote in data.get('championship_quotes', []):
-                quote_with_source['source'] = 'Championship'
-            else:
-                quote_with_source['source'] = 'Funny'
-
-            all_quotes.append(quote_with_source)
-
-    if not all_quotes:
-        return jsonify({"message": "No quotes found matching the specified filters."}), 404
+    if not all_quotes: return jsonify({"error": "No quotes found."}), 404
 
     return jsonify({
         "query": query,
@@ -589,7 +600,6 @@ def search_quotes():
         "results": all_quotes,
         "count": len(all_quotes)
     })
-
 
 if __name__ == '__main__':
     app.run(debug=True)
