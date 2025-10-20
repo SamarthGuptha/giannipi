@@ -14,7 +14,10 @@ from streak_service import analyze_game_streaks
 app = Flask(__name__)
 
 DATA_FILE = 'giannis_data.json'
+
+outcome_stats_cache = {}
 try:
+    global data
     with open(DATA_FILE, 'r', encoding='utf-8') as f:
         data = json.load(f)
     DATA_LOADED = True
@@ -146,6 +149,54 @@ def execute_quote_search(quotes_to_search, query_lower, speaker_filter):
     return all_quotes
 
 
+def precompute_outcome_stats():
+    global outcome_stats_cache
+    if 'stat_lines' not in data:
+        print("Could not pre-compute stats: 'stat_lines' not in data.")
+        return
+
+    win_totals = {'games_played': 0, 'points': 0, 'rebounds': 0, 'assists': 0, 'steals': 0, 'blocks': 0}
+    loss_totals = {'games_played': 0, 'points': 0, 'rebounds': 0, 'assists': 0, 'steals': 0, 'blocks': 0}
+
+    for game in data['stat_lines']:
+        stats = game.get('stats', {})
+        score = game.get('score', '')
+
+        target_dict = None
+        if score.startswith('W'):
+            target_dict = win_totals
+        elif score.startswith('L'):
+            target_dict = loss_totals
+
+        if target_dict is not None:
+            target_dict['games_played'] += 1
+            for stat_key in ['points', 'rebounds', 'assists', 'steals', 'blocks']:
+                target_dict[stat_key] += stats.get(stat_key, 0)
+
+    win_averages = {}
+    if win_totals['games_played'] > 0:
+        win_averages = {
+            "games_played": win_totals['games_played'],
+            "avg_points": round(win_totals['points'] / win_totals['games_played'], 1),
+            "avg_rebounds": round(win_totals['rebounds'] / win_totals['games_played'], 1),
+            "avg_assists": round(win_totals['assists'] / win_totals['games_played'], 1),
+            "avg_steals": round(win_totals['steals'] / win_totals['games_played'], 1),
+            "avg_blocks": round(win_totals['blocks'] / win_totals['games_played'], 1),
+        }
+
+    loss_averages = {}
+    if loss_totals['games_played'] > 0:
+        loss_averages = {
+            "games_played": loss_totals['games_played'],
+            "avg_points": round(loss_totals['points'] / loss_totals['games_played'], 1),
+            "avg_rebounds": round(loss_totals['rebounds'] / loss_totals['games_played'], 1),
+            "avg_assists": round(loss_totals['assists'] / loss_totals['games_played'], 1),
+            "avg_steals": round(loss_totals['steals'] / loss_totals['games_played'], 1),
+            "avg_blocks": round(loss_totals['blocks'] / loss_totals['games_played'], 1),
+        }
+
+    outcome_stats_cache = {"wins": win_averages, "losses": loss_averages}
+    print("Successfully pre-computed and cached stats by outcome.")
 
 @app.route('/')
 def home():
@@ -170,9 +221,19 @@ def home():
             "/giannis/dunks/count",
             "/bucks/championship-quotes",
             "/giannis/funny-quotes",
-            "/giannis/video-playlist"
+            "/giannis/video-playlist",
+            "/giannis/on-this-day",
+            "/giannis/stats-by-outcome"
         ]
     })
+
+
+@app.route('/giannis/stats-by-outcome')
+def get_stats_by_outcome():
+    if not outcome_stats_cache:
+        return jsonify({"error": "Data could not be processed"}), 500
+
+    return jsonify(outcome_stats_cache)
 
 
 @app.route('/giannis/video-playlist')
@@ -219,6 +280,37 @@ def get_video_playlist():
             })
     return jsonify(playlist)
 
+
+@app.route('/giannis/on-this-day')
+def get_on_this_day():
+    if 'stat_lines' not in data:
+        return jsonify({"error": "Stat lines data not available."}), 500
+
+    target_date_str = request.args.get('date')
+    if target_date_str:
+        try:
+            datetime.strptime(f"2000-{target_date_str}", "%Y-%m-%d")
+            target_md = target_date_str
+        except ValueError:
+            return jsonify({"error": "Invalid date format. Please use 'MM-DD'."}), 400
+    else:
+        today = datetime.now()
+        target_md = today.strftime('%Y-%m-%d')
+
+    stat_lines = data.get('stat_lines', [])
+    found_games = []
+
+    for game in stat_lines:
+        game_date = game.get('date', '')
+        if game_date[5:] == target_md:
+            found_games.append(game)
+
+    if not found_games:
+        return jsonify({
+            "message": f"No historical games found for the date {target_md}"
+        }), 404
+
+    return jsonify(found_games)
 
 
 @app.route('/giannis/stat-lines')
