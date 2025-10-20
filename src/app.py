@@ -16,6 +16,8 @@ app = Flask(__name__)
 DATA_FILE = 'giannis_data.json'
 
 outcome_stats_cache = {}
+
+
 try:
     global data
     with open(DATA_FILE, 'r', encoding='utf-8') as f:
@@ -198,6 +200,15 @@ def precompute_outcome_stats():
     outcome_stats_cache = {"wins": win_averages, "losses": loss_averages}
     print("Successfully pre-computed and cached stats by outcome.")
 
+
+def  calculate_impact_score(game_stats):
+    return (
+        game_stats.get('points', 0) +
+        game_stats.get('rebounds', 0) +
+        game_stats.get('assists', 0) +
+        (game_stats.get('steals', 0) * 2) +
+        (game_stats.get('blocks', 0) * 2)
+    )
 @app.route('/')
 def home():
     return jsonify({
@@ -223,9 +234,63 @@ def home():
             "/giannis/funny-quotes",
             "/giannis/video-playlist",
             "/giannis/on-this-day",
-            "/giannis/stats-by-outcome"
+            "/giannis/stats-by-outcome",
+            "/giannis/opponent-deep-dive"
         ]
     })
+
+
+
+@app.route('/giannis/opponent-deep-dive')
+def get_opponent_deep_dive():
+    opponent_name = request.args.get('opponent')
+
+    if not opponent_name: return jsonify({"error": "The 'opponent' query parameter is required."})
+    if 'stat_lines' not in data: return jsonify({"error": "The 'stat_lines' data unnavailable."})
+
+    games_vs_opponent = [
+        game for game in data['stat_lines']
+        if game.get('opponent', '').lower() == opponent_name.lower()
+    ]
+    if not games_vs_opponent:
+        return jsonify({"message": f"No games found in dataset against {opponent_name}."}), 404
+
+    totals = {'points': 0, 'rebounds': 0, 'assists': 0, 'steals': 0, 'blocks': 0}
+
+    for game in games_vs_opponent:
+        for stat in totals:
+            totals[stat] += game.get('stats', {}).get(stat, 0)
+
+    num_games = len(games_vs_opponent)
+    career_averages = {f"avg_{stat}": round(total / num_games, 1) for stat, total in totals.items()}
+
+    career_highs = {'points': 0, 'rebounds': 0, 'assists': 0, 'steals': 0, 'blocks': 0}
+
+    for game in games_vs_opponent:
+        for stat in career_highs:
+            current_stat = game.get('stats', {}).get(stat, 0)
+            if current_stat>career_highs[stat]:
+                career_highs[stat] = current_stat
+
+    best_game  = None
+    max_score = -1
+    for game in games_vs_opponent:
+        score = calculate_impact_score(game.get('stats', {}))
+        if score>max_score:
+            max_score=score
+            best_game=game
+
+    response = {
+        "opponent": best_game.get('opponent'),
+        "games_played_in_dataset": num_games,
+        "career_averages": career_averages,
+        "career_highs": career_highs,
+        "best_game_details": best_game
+    }
+
+    return jsonify(response)
+
+
 
 
 @app.route('/giannis/stats-by-outcome')
