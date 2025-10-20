@@ -2,6 +2,7 @@ import json
 import random
 from flask import Flask, jsonify, request
 from datetime import datetime
+from operator import itemgetter
 
 from comparison_service import calculate_similarity, get_career_highs, STAT_CATEGORIES
 from analysis_service import analyze_quotes
@@ -169,8 +170,55 @@ def home():
             "/giannis/dunks/count",
             "/bucks/championship-quotes",
             "/giannis/funny-quotes",
+            "/giannis/video-playlist"
         ]
     })
+
+
+@app.route('/giannis/video-playlist')
+def get_video_playlist():
+    if 'stat_lines' not in data:
+        return jsonify({"error": "Stat Lines data not available or not loaded."}), 500
+
+    stat_lines = data.get('stat_lines', [])
+
+    sort_by = request.args.get('sort_by', 'date').lower()
+    try:
+        limit = int(request.args.get('limit', 10))
+    except (ValueError, TypeError):
+        return jsonify({"error": "Limit must be an integer."}), 500
+
+    valid_sort_stats = ['points', 'rebounds', 'assists', 'steals', 'blocks']
+
+    if sort_by == 'date':
+        sorted_games = sorted(stat_lines, key=itemgetter('date'), reverse = True)
+    elif sort_by in valid_sort_stats:
+        sorted_games = sorted(
+            stat_lines,
+            key=lambda game: game.get('stats', {}).get(sort_by, 0),
+            reverse = True
+        )
+    else:
+        return jsonify({
+            "error": f"invalid 'sort_by' parameter. Use 'date' or one of {valid_sort_stats}"
+        }), 400
+
+    limited_games = sorted_games[:limit]
+
+    playlist = []
+    for game in limited_games:
+        if 'youtube_link' in game and game['youtube_link']:
+            points = game.get('stats', {}).get('points', 'N/A')
+            title = f"{points} points vs {game.get('opponent', 'N/A')} ({game.get('date', 'N/A')})"
+
+            playlist.append({
+                "title": title,
+                "date": game.get('date'),
+                "opponent": game.get('opponent'),
+                "url": game.get('youtube_link')
+            })
+    return jsonify(playlist)
+
 
 
 @app.route('/giannis/stat-lines')
