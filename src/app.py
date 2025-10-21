@@ -18,6 +18,31 @@ DATA_FILE = 'giannis_data.json'
 outcome_stats_cache = {}
 
 VALID_STATS = {'points', 'rebounds', 'assists', 'steals', 'blocks'}
+TRIVIA_RECIPES = [
+    {
+        "template": "Against which team did Giannis score {stats[points]} points on {date}?",
+        "answer_key": "opponent",
+        "distractor_key": "opponent"
+    },
+    {
+        "template": "How many {stat_name} did Giannis have in his {stats[points]}-point game against the {opponent}?",
+        "answer_key": "stats",
+        "answer_subkey_pool": ["rebounds", "assists", "steals", "blocks"],
+        "distractor_key": "stats"
+    },
+    {
+        "template": "On what date did Giannis have his iconic '{fun_fact_short}' performance against the {opponent}?",
+        "answer_key": "date",
+        "distractor_key": "date"
+    },
+    {
+        "template": "In the famous 'Game Ball Incident' game, Giannis set a franchise record with how many points?",
+        "answer_key": "stats",
+        "answer_sub_key": "points",
+        "distractor_key": "stats",
+        "requires_fun_fact_containing": "Game Ball Incident"
+    }
+]
 
 
 try:
@@ -48,6 +73,20 @@ def check_data_ready(key=None):
 
     return None
 
+
+def get_distractors(stat_lines, correct_value, key, sub_key=None, num=3):
+    distractor_pool = set()
+    for game in stat_lines:
+        if sub_key:
+            value = game.get(key, {}).get(sub_key)
+        else:
+            value = game.get(key)
+
+        if value is not None and value != correct_value: distractor_pool.add(value)
+
+    if len(distractor_pool) < num: return []
+
+    return random.sample(list(distractor_pool), num)
 
 def filter_stat_lines(stat_lines, args):
     filtered_lines = []
@@ -238,10 +277,63 @@ def home():
             "/giannis/video-playlist",
             "/giannis/on-this-day",
             "/giannis/stats-by-outcome",
-            "/giannis/opponent-deep-dive"
+            "/giannis/opponent-deep-dive",
+            "/trivia/generate"
         ]
     })
 
+@app.route('/trivia/generate')
+def generate_trivia():
+    if 'stat_lines' not in data or len(data['stat_lines'])<4:
+        return jsonify({"error": "Not enough game data loaded to generate trivia."}), 500
+
+    all_games = data['stat_lines']
+
+    while True:
+        recipe = random.choice(TRIVIA_RECIPES)
+        answer_game = random.choice(all_games)
+
+        if "requires_fun_fact_containing" in recipe:
+            if recipe["requires_fun_fact_containing"] in answer_game.get("fun_fact", ""):
+                break
+            else: continue
+        else: break
+
+    distractor_games = [game for game in all_games if game != answer_game]
+
+    template_data = answer_game.copy()
+    template_data['fun_fact_short'] = template_data.get('fun_fact', '').split('.')[0]
+
+    stat_to_ask = None
+    if "answer_subkey_pool" in recipe:
+        stat_to_ask = random.choice(recipe["answer_subkey_pool"])
+        template_data['stat_name'] = stat_to_ask
+
+    question = recipe["template"].format(**template_data)
+
+    answer_subkey = recipe.get("answer_subkey") or stat_to_ask
+    if answer_subkey:
+        correct_answer = answer_game.get(recipe["answer_key"], {}).get(answer_subkey)
+    else:
+        correct_answer = answer_game.get(recipe["answer_key"])
+
+    distractor_subkey = recipe.get("distractor_subkey") or answer_subkey
+    incorrect_answers = get_distractors(
+        distractor_games,
+        correct_answer,
+        recipe["distractor_key"],
+        sub_key = distractor_subkey
+    )
+
+    if correct_answer is None or not incorrect_answers:
+        return jsonify({"error": "Could not generate valid trivia question"}), 500
+
+
+    return jsonify({
+        "question": question,
+        "correct_answer": correct_answer,
+        "incorrect_answers": sorted(incorrect_answers)
+    })
 
 @app.route('/analytics/stat-correlation')
 def get_stat_correlation():
