@@ -17,6 +17,8 @@ DATA_FILE = 'giannis_data.json'
 
 outcome_stats_cache = {}
 
+VALID_STATS = {'points', 'rebounds', 'assists', 'steals', 'blocks'}
+
 
 try:
     global data
@@ -227,6 +229,7 @@ def home():
             "/analytics/quote-source-distribution",
             "/analytics/speaker-analysis",
             "/analytics/time-gaps",
+            "/analytics/stat-correlation",
             "/search/quotes?query=...&source=...&speaker=...",
             "/giannis/dunks-by-type",
             "/giannis/dunks/count",
@@ -240,7 +243,50 @@ def home():
     })
 
 
+@app.route('/analytics/stat-correlation')
+def get_stat_correlation():
+    primary_stat = request.args.get('primary_stat')
+    threshold_str = request.args.get('threshold')
+    secondary_stat = request.args.get('secondary_stat')
 
+    if not all([primary_stat, threshold_str, secondary_stat]): return jsonify({"error": "Missing required query params. please provide all three."})
+
+    if primary_stat not in VALID_STATS: return jsonify({"error": f"Invalid 'primary_stat'. Must be one of {list(VALID_STATS)}."})
+    if primary_stat not in VALID_STATS: return jsonify({"error": f"Invalid 'secondary_stat'. Must be one of {list(VALID_STATS)}."})
+
+    try:
+        threshold = int(threshold_str)
+    except (ValueError, TypeError):
+        return jsonify({"error": "Invalid 'threshold'. Must be an integer."}), 400
+
+    if 'stat_lines' not in data:
+        return jsonify({"error": "Stat lines data unnavailable."}), 500
+
+    filtered_games = [
+        game for game in data['stat_lines']
+        if game.get('stats', {}).get(primary_stat, 0) >= threshold
+    ]
+
+    total_secondary_stat = 0
+    for game in filtered_games:
+        total_secondary_stat += game.get('stats', {}).get(secondary_stat, 0)
+
+    average_secondary_stat = round(total_secondary_stat / len(filtered_games), 1)
+
+    response = {
+        "query": {
+            "primary_stat": primary_stat,
+            "threshold": threshold,
+            "secondary_stat_to_average": secondary_stat,
+        },
+        "analysis": {
+            "matching_games_found": len(filtered_games),
+            "average_value": average_secondary_stat,
+        },
+        "games_included_in_analysis": filtered_games
+    }
+
+    return jsonify(response)
 @app.route('/giannis/opponent-deep-dive')
 def get_opponent_deep_dive():
     opponent_name = request.args.get('opponent')
