@@ -1,5 +1,4 @@
-import json
-import random
+import json, random, re
 from flask import Flask, jsonify, request
 from datetime import datetime
 from operator import itemgetter
@@ -18,6 +17,7 @@ DATA_FILE = 'giannis_data.json'
 outcome_stats_cache = {}
 
 VALID_STATS = {'points', 'rebounds', 'assists', 'steals', 'blocks'}
+STAT_MAP = {'p': 'points', 'r': 'rebounds', 'a': 'assists', 's': 'steals', 'b': 'blocks'}
 TRIVIA_RECIPES = [
     {
         "template": "Against which team did Giannis score {stats[points]} points on {date}?",
@@ -250,6 +250,29 @@ def  calculate_impact_score(game_stats):
         (game_stats.get('steals', 0) * 2) +
         (game_stats.get('blocks', 0) * 2)
     )
+
+def parse_stat_string(stat_str):
+    stats={}
+    parts = stat_str.lower().split(',')
+
+    for part in parts:
+        part = part.strip()
+        match = re.match(r'^(\d+)([prsab])$', part)
+        if not match: return None, f"Invalid stat format: '{part}'. Use format like '50p, 10r, 5a'."
+
+        value,key_char = match.groups()
+        stat_name = STAT_MAP[key_char]
+        stats[stat_name] = int(value)
+    return stats, None
+
+def calculate_percentage_difference(actual, hypothetical):
+    if hypothetical == 0:
+        return "N/A (cannot compare to 0)"
+
+    diff = ((actual-hypothetical)/ hypothetical)*100
+
+    return f"{diff:+.1f}%"
+
 @app.route('/')
 def home():
     return jsonify({
@@ -269,6 +292,7 @@ def home():
             "/analytics/speaker-analysis",
             "/analytics/time-gaps",
             "/analytics/stat-correlation",
+            "/analytics/what-if"
             "/search/quotes?query=...&source=...&speaker=...",
             "/giannis/dunks-by-type",
             "/giannis/dunks/count",
@@ -281,6 +305,66 @@ def home():
             "/trivia/generate"
         ]
     })
+
+@app.route('/analytics/what-if')
+def get_what_if_scenario():
+    game_date_str = request.args.get('date')
+    compare_to_str = request.args.get('compare_to')
+
+    if not all([game_date_str, compare_to_str]):
+        return jsonify({"error": "Missing required query params."}), 400
+
+    try:
+        datetime.strptime(game_date_str, '%Y-%m-%d')
+    except ValueError:
+        return jsonify({"error": "Invalid date format."}), 400
+
+    hypothetical_stats, error = parse_stat_string(compare_to_str)
+
+    if error:
+        return jsonify({"error": error}), 400
+
+    if 'stat_lines' not in data:
+        return jsonify({"error": "Stat lines unavailable"}), 500
+
+    actual_game = next((game for game in data['stat_lines'] if game.get('date') == game_date_str), None)
+
+    if not actual_game:
+        return jsonify({"message": f"No game found in the dataset for the date '{game_date_str}'"}), 404
+
+    actual_stats = actual_game.get('stats', {})
+    percentage_difference = {}
+
+    for stat, hypo_value in hypothetical_stats.items():
+        actual_value = actual_stats.get(stat, 0)
+        percentage_difference[stat] = calculate_percentage_difference(actual_value, hypo_value)
+
+    points_hypo = hypothetical_stats.get('points')
+    points_actual = actual_stats.get('points')
+
+    narrative = f"In his performance against the {actual_game.get('opponent')}, Giannis scored {points_actual} points."
+    if points_hypo is not None:
+        points_diff = abs(points_actual - points_hypo)
+        if points_actual<points_hypo:
+            narrative += f" This was {points_diff} points shy of the hypothetical {points_hypo} points mark."
+        else:
+            narrative += f" This was {points_diff} points more than the hypothetical {points_hypo}-point mark."
+
+
+    response = {
+        "scenario": {
+            "game_date": game_date_str,
+            "opponent": actual_game.get('opponent'),
+            "hypothetical_stats": hypothetical_stats,
+        },
+        "comparison": {
+            "actual_stats": actual_stats,
+            "percentage_difference": percentage_difference
+        },
+        "narrative": narrative
+    }
+
+    return jsonify(response)
 
 @app.route('/trivia/generate')
 def generate_trivia():
