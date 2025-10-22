@@ -2,6 +2,7 @@ import json, random, re
 from flask import Flask, jsonify, request
 from datetime import datetime
 from operator import itemgetter
+import numpy as np
 
 from comparison_service import calculate_similarity, get_career_highs, STAT_CATEGORIES
 from analysis_service import analyze_quotes
@@ -290,6 +291,7 @@ def home():
             "/analytics/game-streaks?stat=...&min=...&length=...",
             "/analytics/quote-source-distribution",
             "/analytics/speaker-analysis",
+            "/analytics/simulate-game",
             "/analytics/time-gaps",
             "/analytics/stat-correlation",
             "/analytics/what-if"
@@ -305,6 +307,74 @@ def home():
             "/trivia/generate"
         ]
     })
+
+@app.route('/analytics/simulate-game')
+def simulate_game():
+    opponent_name = request.args.get('opponent')
+
+    if not opponent_name:
+        return jsonify({"error": "The 'opponent' query parameter is required."}), 400
+
+    if 'stat_lines' not in data:
+        return jsonify({"error": "The 'stat_lines' query parameter is required."}), 500
+
+    historical_games = [
+        game for game in data['stat_lines']
+        if game.get('opponent', '').lower() == opponent_name.lower()
+    ]
+
+    if len(historical_games) < 2:
+        return jsonify({
+            "error": "Not enough historical data.",
+            "message": f"Need atleast 2 games against {opponent_name} to run a simulation."
+        }), 404
+
+
+    stats_for_calc = {stat: [] for stat in STAT_CATEGORIES}
+    bucks_scores = []
+    opponent_scores = []
+
+    for game in historical_games:
+        for stat in stats_for_calc:
+            stats_for_calc[stat].append(game.get('stats', {}).get(stat, 0))
+        try:
+            score_parts = game.get('score', '').split(' ')[1].split('-')
+            bucks_score, opponent_score = int(score_parts[0]), int(score_parts[1])
+            bucks_scores.append(bucks_score)
+            opponent_scores.append(opponent_score)
+        except (IndexError, ValueError):
+            continue
+
+    model = {"giannis_stats": {}, "scoring": {}}
+    for stat, values in stats_for_calc.items():
+        model["giannis_stats"][stat] = {"mean": np.mean(values), "std_dev": np.std(values)}
+
+    model["scoring"]["bucks_mean"] = np.mean(bucks_scores)
+    model["scoring"]["opponent_mean"] = np.mean(opponent_scores)
+    model["scoring"]["opponent_std_dev"] = np.std(opponent_scores)
+
+    simulated_stats = {}
+    for stat, model_data in model["giannis_stats"].items():
+        sim_value = np.random.normal(model_data["mean"], model_data["std_dev"])
+        simulated_stats[stat]  = max(0, int(round(sim_value)))
+
+    bucks_final_score = int(round(np.random.normal(model["scoring"]["bucks_mean"], 10)))
+    opponent_final_score = int(round(np.random.normal(model["scoring"]["opponent_mean"], model["scoring"]["opponent_std_dev"])))
+
+    response = {
+        "simulation_details": {
+            "opponent": opponent_name,
+            "based_on_historical_games": len(historical_games)
+        },
+        "simulated_final_score": {
+            "bucks": bucks_final_score,
+            "opponent": opponent_final_score,
+            "winner": "Milwaukee Bucks" if bucks_final_score>opponent_final_score else opponent_name
+        },
+        "giannis_simulated_stats": simulated_stats
+    }
+
+    return jsonify(response)
 
 @app.route('/analytics/what-if')
 def get_what_if_scenario():
