@@ -74,6 +74,32 @@ def check_data_ready(key=None):
 
     return None
 
+def parse_game_margin(score_str):
+    match = re.match(r'^(W|L)\s+(\d+)-(\d+)', score_str)
+    if not match:
+        return 'Unknown', 0, False
+
+    outcome, score1_str, score2_str = match.groups()
+    try:
+        score1 = int(score1_str)
+        score2 = int(score2_str)
+        margin = abs(score1 - score2)
+        return outcome, margin, True
+    except ValueError:
+        return 'Unknown', 0, False
+
+def calculate_average_stats(stat_totals, game_count):
+    if game_count == 0:
+        return {
+            'points': 0, 'rebounds': 0, 'assists': 0, 'steals': 0, 'blocks': 0
+        }
+
+    avg_stats = {}
+    for stat, total in stat_totals.items():
+        avg_stats[stat] = round(total / game_count, 1)
+    return avg_stats
+
+
 
 def get_distractors(stat_lines, correct_value, key, sub_key=None, num=3):
     distractor_pool = set()
@@ -294,7 +320,8 @@ def home():
             "/analytics/simulate-game",
             "/analytics/time-gaps",
             "/analytics/stat-correlation",
-            "/analytics/what-if"
+            "/analytics/what-if",
+            "/analytics/clutch-performance",
             "/search/quotes?query=...&source=...&speaker=...",
             "/giannis/dunks-by-type",
             "/giannis/dunks/count",
@@ -308,6 +335,63 @@ def home():
         ]
     })
 
+@app.route('/analytics/clutch-performance')
+def get_clutch_performance():
+    try:
+        margin_param = int(request.args.get('margin', 5))
+    except (ValueError, TypeError):
+        return jsonify({"error": "invalid 'margin' parameter, must be an integer."}), 400
+
+    if 'stat_lines' not in data:
+        return jsonify({"error": "Stat lines data unnavailable."}), 500
+
+    stat_keys = ['points', 'rebounds', 'assists', 'steals', 'blocks']
+
+    clutch_bucket = {
+        'games_found': 0, 'wins': 0, 'losses': 0,
+        'stat_totals': {stat: 0 for stat in stat_keys}
+    }
+    non_clutch_bucket = {
+        'games_found': 0, 'wins': 0, 'losses': 0,
+        'stat_totals': {stat: 0 for stat in stat_keys}
+    }
+
+    for game in data['stat_lines']:
+        outcome, margin, success = parse_game_margin(game.get('score', ''))
+
+        if not success: continue
+
+        game_stats = game.get('stats', {})
+        target_bucket = clutch_bucket if margin <= margin_param else non_clutch_bucket
+
+        target_bucket['games_found'] += 1
+        if outcome == 'W':
+            target_bucket['wins'] += 1
+        elif outcome == 'L':
+            target_bucket['losses'] += 1
+
+        for stat_key in stat_keys:
+            target_bucket['stat_totals'][stat_key] += game_stats.get(stat_key, 0)
+
+
+    clutch_results = {
+        "games_found": clutch_bucket['games_found'],
+        "record": f"{clutch_bucket['wins']} - {clutch_bucket['losses']}",
+        "avg_stats": calculate_average_stats(clutch_bucket['stat_totals'], clutch_bucket['games_found'])
+    }
+
+    non_clutch_results = {
+        "games_found": non_clutch_bucket['games_found'],
+        "record": f"{non_clutch_bucket['wins']} - {non_clutch_bucket['losses']}",
+        "avg_stats": calculate_average_stats(non_clutch_bucket['stat_totals'], non_clutch_bucket['games_found'])
+    }
+
+
+    return jsonify({
+        "query_margin": margin_param,
+        "clutch_games": clutch_results,
+        "non_clutch_games": non_clutch_results
+    })
 @app.route('/analytics/simulate-game')
 def simulate_game():
     opponent_name = request.args.get('opponent')
