@@ -322,6 +322,7 @@ def home():
             "/analytics/stat-correlation",
             "/analytics/what-if",
             "/analytics/clutch-performance",
+            "/analytics/performance-by-period",
             "/search/quotes?query=...&source=...&speaker=...",
             "/giannis/dunks-by-type",
             "/giannis/dunks/count",
@@ -335,6 +336,58 @@ def home():
         ]
     })
 
+@app.route('/analytics/performance-by-period')
+def get_performance_by_period():
+    group_by = request.args.get('group_by', 'year').lower()
+
+    if group_by not in ['year', 'month']:
+        return jsonify({"error": "Invalid 'group_by' parameter. Must be 'year' or 'month'."}), 400
+
+    if 'stat_lines' not in data:
+        return jsonify({"error": "Stat lines data unnavailable."}), 500
+
+    stat_keys = ['points', 'rebounds', 'assists', 'steals', 'blocks']
+    period_buckets = {}
+
+    for game in data['stat_lines']:
+        game_date_str = game.get('date', '')
+        game_stats = game.get('stats', {})
+
+        try:
+            datetime.strptime(game_date_str, '%Y-%m-%d')
+        except ValueError: continue
+
+        period_key = None
+        if group_by == 'year':
+            period_key = game_date_str[0:4]
+        elif group_by == 'month':
+            period_key = game_date_str[5:7]
+
+        if not period_key: continue
+
+        if period_key not in period_buckets:
+            period_buckets[period_key] = {
+                'games_played': 0,
+                'stat_totals': {stat: 0 for stat in stat_keys}
+            }
+
+        period_buckets[period_key]['games_played']+=1
+        for stat_key in stat_keys:
+            period_buckets[period_key]['stat_totals'][stat_key]+=game_stats.get(stat_key, 0)
+
+    response_list = []
+    for period, bucket_data in period_buckets.items():
+        avg_stats = calculate_average_stats(bucket_data['stat_totals'], bucket_data['games_played'])
+
+        response_list.append({
+            "period": period,
+            "games_played": bucket_data['games_played'],
+            "avg_stats": avg_stats
+        })
+
+    response_list.sort(key=lambda x: x['period'])
+
+    return jsonify(response_list)
 @app.route('/analytics/clutch-performance')
 def get_clutch_performance():
     try:
