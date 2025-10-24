@@ -1,8 +1,10 @@
+import heapq
 import json, random, re
 from flask import Flask, jsonify, request
 from datetime import datetime
 from operator import itemgetter
 import numpy as np
+import math
 
 from comparison_service import calculate_similarity, get_career_highs, STAT_CATEGORIES
 from analysis_service import analyze_quotes
@@ -101,6 +103,70 @@ def calculate_average_stats(stat_totals, game_count):
         avg_stats[stat] = round(total / game_count, 1)
     return avg_stats
 
+def parse_weightsd2(weights_str):
+    weights_dict = {}
+    if not weights_str:
+        return {stat: 1.0 for stat in STAT_MAP.values()}, None
+
+    pattern = re.compile(r'([prsab]):(\d*\.?\d+)')
+    matches = pattern.findall(weights_str.lower())
+
+    if not matches: return None, "Invalid weights format."
+
+    for stat_char, value_str in matches:
+        try:
+            stat_name = STAT_MAP[stat_char]
+            weights_dict[stat_name] = float(value_str)
+        except (KeyError, ValueError):
+            return None, f"invalid part in weights string: '{stat_char}:{value_str}'"
+
+    return weights_dict, None
+
+def calculate_cost(stats_a, stats_b, weights_dict):
+    cost=0.0
+    for stat_name, weight in weights_dict.items():
+        diff = abs(stats_a.get(stat_name, 0) - stats_b.get(stat_name, 0))
+        cost += diff*weight
+    return cost
+
+def find_shortest_path(games_by_date, start_date, end_date, weights_dict):
+    graph = {}
+    for date_a, game_a in games_by_date.items():
+        graph[date_a] = []
+        for date_b, game_b in games_by_date.items():
+            if date_a == date_b: continue
+
+            cost = calculate_cost(game_a['stats'], game_b['stats'], weights_dict)
+            graph[date_a].append((date_b, cost))
+
+    distances = {node: math.inf for node in graph}
+    previous_nodes = {node: None for node in graph}
+    priority_queue = [(0, start_date)]
+    distances[start_date] = 0
+
+    while priority_queue:
+        current_distance, current_node = heapq.heappop(priority_queue)
+
+        if current_distance>distances[current_node]: continue
+
+        for neighbour, weight in graph[current_node]:
+            distance = current_distance + weight
+            if distance<distances[neighbour]:
+                distances[neighbour] = distance
+                previous_nodes[neighbour] = current_node
+                heapq.heappush(priority_queue, (distance, neighbour))
+
+    path=[]
+    current_node = end_date
+    total_cost = distances[end_date]
+
+    if total_cost == math.inf: return None, 0
+
+    while current_node is not None:
+        path.append(games_by_date[current_node])
+        current_node = previous_nodes[current_node]
+
+    return list(reversed(path)), total_cost
 
 
 def get_distractors(stat_lines, correct_value, key, sub_key=None, num=3):
@@ -361,6 +427,7 @@ def home():
             "/analytics/time-gaps",
             "/analytics/shooting-efficiency",
             "/analytics/stat-correlation",
+            "/analytics/performance-path",
             "/analytics/what-if",
             "/analytics/clutch-performance",
             "/analytics/performance-by-period",
@@ -446,6 +513,45 @@ def get_milestone_search():
         return jsonify({"error": "No games found."}), 404
 
     return jsonify(found_games), 200
+
+@app.route('/analytics/performance-path')
+def get_performance_path():
+    start_date = request.args.get('start_date')
+    end_date = request.args.get('end_date')
+    weights_str = request.args.get('weights')
+
+    if not all([start_date, end_date]):
+        return jsonify({"error": "Missing required parameters."}), 400
+
+    if 'stat_lines' not in data:
+        return jsonify({"error": "Stat lines data unnavailable or not loaded."}), 500
+
+    games_by_date = {game['date']: game for game in data['stat_lines']}
+
+    if start_date not in games_by_date:
+        return jsonify({"error": f"Start date {start_date} not found in dataset."}), 404
+    if end_date not in games_by_date:
+        return jsonify({"error": f"End date {end_date} not found in dataset."}), 404
+
+    weights_dict, error = parse_weightsd2(weights_str)
+    if error: return jsonify({"error": error}), 400
+
+    path, total_cost = find_shortest_path(games_by_date, start_date, end_date, weights_dict)
+    if path is None: return jsonify({"error": "No valid path could be found."}), 500
+
+    response = {
+        "query": {
+            "start_game": f"{start_date} (vs {games_by_date[start_date].get('opponent')})",
+            "end_game": f"{end_date} (vs {games_by_date[end_date].get('opponent')})",
+            "weights": weights_dict
+        },
+        "total_statistical_cost": round(total_cost, 2),
+        "path": path
+    }
+
+    return jsonify(response)
+
+
 
 @app.route('/analytics/performance-by-period')
 def get_performance_by_period():
