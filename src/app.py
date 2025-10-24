@@ -300,6 +300,43 @@ def calculate_percentage_difference(actual, hypothetical):
 
     return f"{diff:+.1f}%"
 
+def parse_milestone_query(query_str):
+    conditions = []
+    condition_pattern = re.compile(r'^\s*([prsab])\s*([><=]+)\s*(\d+)\s*$')
+
+    parts = query_str.lower().split(',')
+
+    for part in parts:
+        part =part.strip()
+        if not part: continue
+
+        match = condition_pattern.match(part)
+
+        if not match:
+            return None, f"Invalid query format: '{part}'."
+
+        stat_char, operator, value_str = match.groups()
+
+        if operator not in ['>', '<', '=', '>=', '<=']:
+            return None, f"Invalid operator: '{operator}'.'"
+
+        stat_name = STAT_MAP[stat_char]
+        value = int(value_str)
+
+        conditions.append((stat_name, operator, value))
+
+    return conditions, None
+
+def check_game_conditions(game_stats, conditions):
+    for stat, operator, value in conditions:
+        actual_value = game_stats.get(stat, 0)
+
+        if operator == '>' and not actual_value > value: return False
+        elif operator == '<' and not actual_value < value: return False
+        elif operator == '=' and not actual_value == value: return False
+        elif operator == '>=' and not actual_value >= value: return False
+        elif operator == '<=' and not actual_value <= value: return False
+    return True
 @app.route('/')
 def home():
     return jsonify({
@@ -332,9 +369,35 @@ def home():
             "/giannis/on-this-day",
             "/giannis/stats-by-outcome",
             "/giannis/opponent-deep-dive",
+            "/giannis/milestone-search",
             "/trivia/generate"
         ]
     })
+
+@app.route('/giannis/milestone-search')
+def get_milestone_search():
+    query_str = request.args.get('query')
+
+    if not query_str:
+        return jsonify({"error": "Missing required 'query' parameter."}), 400
+    if 'stat_lines' not in data:
+        return jsonify({"error": "Stat Lines unnavailable"}), 500
+
+    conditions, error = parse_milestone_query(query_str)
+    if error: return jsonify({"error": error}), 400
+    if not conditions: return jsonify({"error": "Invalid query provided."}), 400
+
+    found_games = []
+    for game in data['stat_lines']:
+        game_stats = game.get('stats', {})
+
+        if check_game_conditions(game_stats, conditions):
+            found_games.append(game)
+
+    if not found_games:
+        return jsonify({"error": "No games found."}), 404
+
+    return jsonify(found_games), 200
 
 @app.route('/analytics/performance-by-period')
 def get_performance_by_period():
