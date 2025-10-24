@@ -19,6 +19,8 @@ outcome_stats_cache = {}
 
 VALID_STATS = {'points', 'rebounds', 'assists', 'steals', 'blocks'}
 STAT_MAP = {'p': 'points', 'r': 'rebounds', 'a': 'assists', 's': 'steals', 'b': 'blocks'}
+SHOOTING_REGEX = re.compile(r'(?:going|shooting an incredible)\s+(\d+)-(\d+)')
+SCORE_REGEX = re.compile(r'^(W|L)\s+(\d+)-(\d+)')
 TRIVIA_RECIPES = [
     {
         "template": "Against which team did Giannis score {stats[points]} points on {date}?",
@@ -355,7 +357,9 @@ def home():
             "/analytics/quote-source-distribution",
             "/analytics/speaker-analysis",
             "/analytics/simulate-game",
+            "/analytics/team-performance",
             "/analytics/time-gaps",
+            "/analytics/shooting-efficiency",
             "/analytics/stat-correlation",
             "/analytics/what-if",
             "/analytics/clutch-performance",
@@ -373,6 +377,50 @@ def home():
             "/trivia/generate"
         ]
     })
+
+@app.route('/analytics/shooting-efficiency')
+def get_shooting_efficiency():
+    if 'stat_lines' not in data:
+        return jsonify({"error": "Stat lines data unnavailable."}), 500
+
+
+    efficiency_data = []
+
+    for game in data['stat_lines']:
+        fun_fact = game.get('fun_fact', '')
+
+        match = SHOOTING_REGEX.search(fun_fact)
+
+        if match:
+            try:
+                fgm_str, fga_str = match.groups()
+                fgm = int(fgm_str)
+                fga = int(fga_str)
+
+                if fga > 0: fg_percentage = round((fgm/ fga)*100, 1)
+                else: fg_percentage = 0.0
+
+                game_efficiency = {
+                    "date": game.get('date'),
+                    "opponent": game.get('opponent'),
+                    "points": game.get('stats', {}).get('points'),
+                    "shooting_efficiency": {
+                        "field_goals_made": fgm,
+                        "field_goals_attempted": fga,
+                        "field_goal_percentage": fg_percentage
+                    },
+                    "source_fun_fact": fun_fact
+                }
+                efficiency_data.append(game_efficiency)
+
+            except (ValueError, IndexError): continue
+
+    if not efficiency_data:
+        return jsonify({
+            "message": "No games with extractable shooting data found in 'fun_fact' fields."
+        }), 404
+
+    return jsonify(efficiency_data)
 
 @app.route('/giannis/milestone-search')
 def get_milestone_search():
@@ -451,6 +499,71 @@ def get_performance_by_period():
     response_list.sort(key=lambda x: x['period'])
 
     return jsonify(response_list)
+
+@app.route('/analytics/team-performance')
+def get_team_performance():
+    if 'stat_lines' not in data:
+        return jsonify({"error": "Stat lines data unnavailable."}), 500
+
+    total_games = 0
+    total_wins = 0
+    total_losses = 0
+    total_giannis_contribution_pct = 0.0
+    total_scoring_margin = 0
+    total_opponent_score = 0
+    total_bucks_score = 0
+
+    for game in data['stat_lines']:
+        score_str = game.get('score', '')
+        giannis_points = game.get('stats', {}).get('points', 0)
+
+        match = SCORE_REGEX.match(score_str)
+
+        if match:
+            try:
+                outcome, bucks_score_str, oppponent_score_str = match.groups()
+                bucks_score = int(bucks_score_str)
+                opponent_score = int(oppponent_score_str)
+
+                total_games+=1
+                total_bucks_score+=bucks_score
+                total_opponent_score+=opponent_score
+                total_scoring_margin+=(bucks_score - opponent_score)
+
+                if outcome == 'W':
+                    total_wins+=1
+                elif outcome == 'L':
+                    total_losses+=1
+
+                if bucks_score>0:
+                    contribution = (giannis_points/bucks_score)
+                    total_giannis_contribution_pct+=contribution
+
+            except (ValueError, TypeError): continue
+
+    if total_games == 0:
+        return jsonify({"message": "No games with valid score data found to analyze."}), 404
+
+    avg_bucks_score = round(total_bucks_score / total_games, 1)
+    avg_opponent_score = round(total_opponent_score / total_games, 1)
+    avg_scoring_margin = round(total_scoring_margin / total_games, 1)
+    avg_giannis_contribution = round((total_giannis_contribution_pct / total_games)*100, 1)
+
+    response = {
+        "games_analyzed": total_games,
+        "team_record": f"{total_wins} - {total_losses}",
+        "team_performance": {
+            "average_bucks_score": avg_bucks_score,
+            "average_opponent_score": avg_opponent_score,
+            "average_scoring_margin": avg_scoring_margin
+        },
+        "giannis_contribution": {
+            "average_percentage_of_team_score": avg_giannis_contribution
+        }
+    }
+
+    return jsonify(response)
+
 @app.route('/analytics/clutch-performance')
 def get_clutch_performance():
     try:
