@@ -6,13 +6,13 @@ from operator import itemgetter
 import numpy as np
 import math
 
-from comparison_service import calculate_similarity, get_career_highs, STAT_CATEGORIES
-from analysis_service import analyze_quotes
-from impact_service import rank_games_by_impact
-from speaker_service import analyze_speakers
-from probability_service import analyze_win_probability
-from dijkstra_service import find_shortest_path, MILESTONE_THRESHOLDS
-from streak_service import analyze_game_streaks
+from .comparison_service import calculate_similarity, get_career_highs, STAT_CATEGORIES
+from .analysis_service import analyze_quotes
+from .impact_service import rank_games_by_impact
+from .speaker_service import analyze_speakers
+from .probability_service import analyze_win_probability
+from .dijkstra_service import find_shortest_path, MILESTONE_THRESHOLDS
+from .streak_service import analyze_game_streaks
 app = Flask(__name__)
 
 DATA_FILE = 'giannis_data.json'
